@@ -1,0 +1,71 @@
+#!/usr/bin/ksh -x
+
+###################################################################
+## orclcheckinstance.ksh ##
+###################################################################
+
+ export dba_bin=/u01/dba/bin
+  export dba_tmp=/u01/dba/tmp
+  export dba_log=/u01/dba/log
+. $dba_bin/dba.config
+  export dba_client_mne=${db_mnemonic}
+  export ORACLE_SID=$1
+  export Cam_Compliance=$2
+  export dump_alarm=$3
+  export dl_list=$4
+  export rename_date=`date +%y%m%d`
+  export curr_date=`date +%A`
+  export curr_time=`date +%H%M`
+  export AlertLog=`find $base -name "alert_${ORACLE_SID}.log"`
+  export AlertLog_Count=`find $base -name "alert_${ORACLE_SID}.log" |wc -l`
+  
+
+ORATAB=/etc/oratab
+echo "`date`   "
+echo  "The Oracle Database(s) Status on: `hostname` :\n"
+
+db=`egrep -i ":Y|:N" $ORATAB | cut -d":" -f1 | grep -v "\#" | grep -v "\*"`
+pslist="`ps -ef | grep pmon`"
+for i in $db; do
+echo  "`$pslist | grep  ora_pmon_$i`" >> /dev/null 2>&1
+
+if (( "$1" )); then
+    echo "*****************************"
+    echo "Oracle Instance - $i is  Down"
+    echo "****************************"
+
+else
+    echo "*****************************"
+    echo "Oracle Instance - $i: is   Up"
+    echo "*****************************"
+fi
+done
+
+
+
+
+
+#######################################################################
+## ckeck the status of listener on the host                                                       ##
+#######################################################################
+
+DBALIST="Nerville.Awuh@cerner.com";
+export DBALIST
+cd /var/opt/oracle
+ps -ef | grep LISTENER | grep -v grep  > listener.exist
+if [ -s listener.exist ]
+then
+echo
+else
+echo "Alert" | mailx -s "Listener 'LISTENER' on `hostname` is down" $DBALIST
+TNS_ADMIN=/var/opt/oracle; 
+export TNS_ADMIN
+ORACLE_SID=db1; 
+export ORACLE_SID
+ORAENV_ASK=NO; export ORAENV_ASK
+PATH=$PATH:/bin:/usr/local/bin; 
+export PATH
+. oraenv
+LD_LIBRARY_PATH=${ORACLE_HOME}/lib;export LD_LIBRARY_PATH
+lsnrctl start LISTENER
+fi
